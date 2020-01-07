@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GIFTI xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://brainvis.wustl.edu/caret6/xml_schemas/GIFTI_Caret.xsd"
+       Version="1"
+       NumberOfDataArrays="1">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[AnatomicalStructurePrimary]]></Name>
+         <Value><![CDATA[CortexLeft]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ParentProvenance]]></Name>
+         <Value><![CDATA[L.sphere.10k_fs_LR.surf.gii:
+/home/brainmappers/workbench/fetchdir/wb_command.4479 -surface-flip-lr R.sphere.10k_fs_LR.surf.gii L.sphere.10k_fs_LR.surf.gii
+
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ProgramProvenance]]></Name>
+         <Value><![CDATA[Workbench
+Version: Beta 0.83
+Qt Compiled Version: 4.8.4
+Qt Runtime Version: 4.8.1
+commit: ef05f6f767651a161ad35a1d80ed59e6892b89f5
+commit date: 2013-11-07 18:16:01 -0600
+Compiled Debug: NO
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[Provenance]]></Name>
+         <Value><![CDATA[/home/brainmappers/workbench/fetchdir/wb_command.4572 -metric-resample L.atlasroi.164k_fs_LR.shape.gii fsaverage.L_LR.spherical_std.164k_fs_LR.surf.gii L.sphere.10k_fs_LR.surf.gii BARYCENTRIC L.atlasroi.10k_fs_LR.shape.gii -largest]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[UniqueID]]></Name>
+         <Value><![CDATA[{686543b2-83d9-40ab-84ed-71e59d67590b}]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[WorkingDirectory]]></Name>
+         <Value><![CDATA[/media/2TBB/Connectome_Project/Pipelines/global/templates/standard_mesh_atlases_macaque]]></Value>
+      </MD>
+   </MetaData>
+   <LabelTable>
+      <Label Key="0" Red="1" Green="1" Blue="1" Alpha="0"><![CDATA[???]]></Label>
+   </LabelTable>
+<DataArray Intent="NIFTI_INTENT_NORMAL"
+           DataType="NIFTI_TYPE_FLOAT32"
+           ArrayIndexingOrder="RowMajorOrder"
+           Dimensionality="1"
+           Dim0="10242"
+           Encoding="GZipBase64Binary"
+           Endian="LittleEndian"
+           ExternalFileName=""
+           ExternalFileOffset="0">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[Name]]></Name>
+         <Value><![CDATA[M132_91-area-parcellation-roi]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[PaletteColorMapping]]></Name>
+         <Value><![CDATA[<PaletteColorMapping Version="1">
+   <ScaleMode>MODE_AUTO_SCALE_PERCENTAGE</ScaleMode>
+   <AutoScalePercentageValues>98.000000 2.000000 2.000000 98.000000</AutoScalePercentageValues>
+   <UserScaleValues>-100.000000 0.000000 0.000000 100.000000</UserScaleValues>
+   <PaletteName>ROY-BIG-BL</PaletteName>
+   <InterpolatePalette>true</InterpolatePalette>
+   <DisplayPositiveData>true</DisplayPositiveData>
+   <DisplayZeroData>false</DisplayZeroData>
+   <DisplayNegativeData>true</DisplayNegativeData>
+   <ThresholdTest>THRESHOLD_TEST_SHOW_OUTSIDE</ThresholdTest>
+   <ThresholdType>THRESHOLD_TYPE_OFF</ThresholdType>
+   <ThresholdFailureInGreen>false</ThresholdFailureInGreen>
+   <ThresholdNormalValues>-1.000000 1.000000</ThresholdNormalValues>
+   <ThresholdMappedValues>-1.000000 1.000000</ThresholdMappedValues>
+   <ThresholdMappedAvgAreaValues>-1.000000 1.000000</ThresholdMappedAvgAreaValues>
+   <ThresholdDataName></ThresholdDataName>
+   <ThresholdRangeMode>PALETTE_THRESHOLD_RANGE_MODE_MAP</ThresholdRangeMode>
+</PaletteColorMapping>
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[UniqueID]]></Name>
+         <Value><![CDATA[{59b5367d-fb2e-4389-b33a-1f8475a704c2}]]></Value>
+      </MD>
+   </MetaData>
+   <Data>eJzt2kFuhDAMBVBu1qv16KPuqmpgQmLHJH2W3oZJvkNAwGKO4/vrOPVTZ8cr6mqtd93NqzzPqqroXbHXu/Wacd+snJ+1P1mZkbmReVFZETmV8yuf0avW1Z6dvfveHY/8JlhN6z5X7Nen6zpzP3bo13KNV+mT3SMzPyv7Uz0hMzIvKqulstcyMr93/T3zosf/ntM6dsUafWYAAAAAAAAAAEAU/2kBAAAAAAAAAAAAAGAVT6iqc63a353Oc0avGXuY3SMzPys7Izc6MzIvM+sJGbPm9sy7O6d3fMS41jF3f3t3/O+xq+q5PypEVfV5sI9Z99OMPtk9MvOzsjNyo59FkXlRWRE5oxkj80d6Rt8vAAAAAJFV0bN1HbOqop9SSqn5Vf3+rvhGqPgm2aVfZa8ZfbJ7ZOZnZQMAAADw370AqKHvdw==</Data>
+</DataArray>
+</GIFTI>

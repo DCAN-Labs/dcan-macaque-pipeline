@@ -1,0 +1,10 @@
+tkmedit started: Wed May  3 16:53:45 2017
+
+	/usr/global/freesurfer53/tktools/tkmedit.bin -f RB_all_2008-03-26.gca 
+
+$Id: tkmedit.c,v 1.343 2011/03/01 01:41:22 nicks Exp $ $Name: stable5 $
+Set user home dir to /group_shares/PSYCH/code/development/pipelines/HCP_NHP_generic/global/templates/MacaqueYerkes19
+Set subject home dir to RB_all_2008-03-26.gca
+Using interface file /usr/global/freesurfer53/tktools/tkmedit.tcl
+Tcl: Successfully parsed tkmedit.tcl
+Tcl: Successfully parsed tkm_functional.tcl

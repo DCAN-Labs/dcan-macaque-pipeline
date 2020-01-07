@@ -1,0 +1,10 @@
+tkmedit started: Tue Mar 29 14:46:48 2016
+
+	/usr/global/freesurfer/tktools/tkmedit.bin -f T1.mgz 
+
+$Id: tkmedit.c,v 1.343 2011/03/01 01:41:22 nicks Exp $ $Name: stable5 $
+Set user home dir to /group_shares/PSYCH/code/development/pipelines/HCP_NHP_generic/global/templates/MacaqueYerkes19/mri
+Set subject home dir to T1.mgz
+Using interface file /usr/global/freesurfer/tktools/tkmedit.tcl
+Tcl: Successfully parsed tkmedit.tcl
+Tcl: Successfully parsed tkm_functional.tcl

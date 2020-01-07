@@ -1,0 +1,17 @@
+number format                      := float
+number of bytes per pixel          := 4
+orientation                        := 2
+number of dimensions               := 4
+scaling factor (mm/pixel) [1]      := 1.000000
+scaling factor (mm/pixel) [2]      := 1.000000
+scaling factor (mm/pixel) [3]      := 1.000000
+matrix size [1]                    := 97
+matrix size [2]                    := 126
+matrix size [3]                    := 80
+matrix size [4]                    := 1
+center                             := 49.000000 -62.000000 -32.000000
+mmppix                             := 1.000000 -1.000000 -1.000000
+date                               := 1/13/17 11:13 AM
+conversion program                 := caret
+imagedata byte order               := littleendian
+caret_metadata                     := 
