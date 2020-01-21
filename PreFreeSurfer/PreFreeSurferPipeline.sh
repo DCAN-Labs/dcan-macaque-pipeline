@@ -289,12 +289,11 @@ for TXw in ${Modalities} ; do
 #    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
 #**   if [ $TXw = T1wN ]; then ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc -mas ${T1wFolder}/${T1wImage}_acpc_brain_mask ${TXwFolder}/${TXwImage}_acpc_brain; fi
 
-    ${FSLDIR}/bin/flirt -in ${TXwFolder}/${TXwImage} -ref ${TXwTemplate} -interp spline -applyxfm \
-    -init ${TXwFolder}/xfms/acpc.mat -out ${TXwFolder}/${TXwImage}_acpc
-    ${FSLDIR}/bin/flirt -in ${TXwFolder}/${TXwImage}_brain -ref ${TXwTemplateBrain} -interp nearestneighbour \
-    -applyxfm -init ${TXwFolder}/xfms/acpc.mat -out ${TXwFolder}/${TXwImage}_acpc_brain
-    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask            
-    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc -mas ${TXwFolder}/${TXwImage}_acpc_brain_mask ${TXwFolder}/${TXwImage}_acpc_brain
+    #apply acpc.mat to head
+    ${FSLDIR}/bin/applywarp --rel --interp=spline -i "${TXwFolder}/${TXwImage}" -r "${TXwTemplate}" \
+        --premat="${TXwFolder}/xfms/acpc.mat" -o "${TXwFolder}/${TXwImage}_acpc"
+    #make brain mask
+    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
 done
 
 ######## END LOOP over T1w and T2w #########
@@ -305,10 +304,10 @@ if [ ! $T1wNormalized = "NONE" ]; then
   cp ${T1wNormalized} ./${T1wNImage}.nii.gz
   ${RUN} ${FSLDIR}/bin/fslreorient2std ./${T1wNImage} ${T1wFolder}/${T1wNImage}1_gdc
   ${RUN} ${FSLDIR}/bin/imcp ${T1wFolder}/${T1wNImage}1_gdc ${T1wFolder}/${T1wNImage}
-  
+
   ${FSLDIR}/bin/applywarp --rel --interp=spline -i "${T1wFolder}/${T1wNImage}" -r "${T1wTemplate}" \
   --premat="${T1wFolder}/xfms/acpc.mat" -o "${T1wFolder}/${T1wNImage}_acpc"
-  ${FSLDIR}/bin/fslmaths ${T1wFolder}/${T1wNImage}_acpc -mas ${T1wFolder}/${T1wImage}_acpc_brain_mask ${T1wFolder}/${T1wNImage}_acpc_brain;
+  ${FSLDIR}/bin/fslmaths ${T1wFolder}/${T1wNImage}_acpc -mas ${T1wFolder}/${T1wImage}_acpc_brain_mask ${T1wFolder}/${T1wNImage}_acpc_brain
   popd > /dev/null
 fi
 
