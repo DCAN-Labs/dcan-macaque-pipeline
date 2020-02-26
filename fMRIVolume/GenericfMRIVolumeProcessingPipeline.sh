@@ -255,26 +255,62 @@ elif [ $DistortionCorrection = TOPUP ]; then
       --gdcoeffs=${GradientDistortionCoeffs} \
       --topupconfig=${TopupConfig}
 
+###########################################################################################################################################################################
+##Bene Changes: Use T2 instead of T1
+#if useT2=none fake T2 and make T2=T2wRestoreImage and apply T1 mask to make T2wRestoreImageBrain  
+#TODO 
+#Here is how I have been faking the T2 and it seems to be working better than using the T1 brain because of the high intensity eyes. 
+#${FSLDIR}/bin/fslmaths ${T1wFolder}/${T1wRestoreImage} -mul -1 ${T1wFolder}/FakeT2Head.nii.gz
+#${FSLDIR}/bin/fslmaths ${T1wFolder}/FakeT2Head.nii.gz -add 500 ${T1wFolder}/FakeT2Head.nii.gz
+#${FSLDIR}/bin/fslmaths ${T1wFolder}/FakeT2Head.nii.gz -uthrp 95 ${T1wFolder}/FakeT2Head.nii.gz
+#${FSLDIR}/bin/fslmaths ${T1wFolder}/FakeT2Head.nii.gz -mas ${T1wFolder}/T1w_acpc_brain_mask.nii.gz ${T1wFolder}/FakeT2brain.nii.gz
+#TODO define T2 images (need to make this better but hard code for now)
+echo "this has only been testin with T2, if we don't have one, fake it here"
+#Create fake "T2" if it doesn't exist
+if [ $useT2 = "True" ] ; then
+  T2wRestoreImage=T2w_acpc_dc_restore
+  T2wRestoreImageBrain=T2w_acpc_dc_restore_brain
+  T1wImage=T1w_acpc_dc_restore ##not sure where this comes from, so this could be a different image. 
+else
+  ${FSLDIR}/bin/fslmaths ${T1wFolder}/${T1wRestoreImage} -mul -1 ${T1wFolder}/T2w_acpc_dc_restore.nii.gz
+  ${FSLDIR}/bin/fslmaths ${T1wFolder}/T2w_acpc_dc_restore.nii.gz -add 500 ${T1wFolder}/T2w_acpc_dc_restore.nii.gz
+  ${FSLDIR}/bin/fslmaths ${T1wFolder}/T2w_acpc_dc_restore.nii.gz -uthrp 95 ${T1wFolder}/T2w_acpc_dc_restore.nii.gz
+  ${FSLDIR}/bin/fslmaths ${T1wFolder}/T2w_acpc_dc_restore.nii.gz -mas ${T1wFolder}/T1w_acpc_brain_mask.nii.gz ${T1wFolder}/T2w_acpc_dc_restore_brain.nii.gz
+  T2wRestoreImage=T2w_acpc_dc_restore
+  T2wRestoreImageBrain=T2w_acpc_dc_restore_brain
+  T1wImage=T1w_acpc_dc_restore ##not sure where this comes from, so this could be a different image.
+fi
+
+
 	${FSLDIR}/bin/applywarp --rel --interp=spline -i ${fMRIFolder}/${ScoutName}_gdc -r ${fMRIFolder}/${ScoutName}_gdc -w ${fMRIFolder}/WarpField.nii.gz -o ${fMRIFolder}/${ScoutName}_gdc_undistorted
   # apply Jacobian correction to scout image (optional)
   ${FSLDIR}/bin/fslmaths ${fMRIFolder}/${ScoutName}_gdc_undistorted -mul ${fMRIFolder}/FieldMap/Jacobian ${fMRIFolder}/${ScoutName}_gdc_undistorted
-  # register undistorted scout image to T1w
-  ${FSLDIR}/bin/flirt -interp spline -dof 6 -in ${fMRIFolder}/${ScoutName}_gdc_undistorted -ref ${T1wFolder}/${T1wRestoreImageBrain} -omat "$fMRIFolder"/Scout2T1w.mat -out ${fMRIFolder}/Scout2T1w.nii.gz -searchrx -30 30 -searchry -30 30 -searchrz -30 30 -cost mutualinfo
-  ${FSLDIR}/bin/convert_xfm -omat "$fMRIFolder"/T1w2Scout.mat -inverse "$fMRIFolder"/Scout2T1w.mat
-  ${FSLDIR}/bin/applywarp --interp=nn -i ${T1wFolder}/${T1wRestoreImageBrain} -r ${fMRIFolder}/${ScoutName}_gdc_undistorted --premat="$fMRIFolder"/T1w2Scout.mat -o ${fMRIFolder}/Scout_brain_mask.nii.gz
+  # register undistorted scout image to T2w head
+ ${FSLDIR}/bin/flirt -interp spline -dof 6 -in ${fMRIFolder}/${ScoutName}_gdc_undistorted -ref ${T1wFolder}/${T2wRestoreImage} -omat "$fMRIFolder"/Scout2T2w.mat -out ${fMRIFolder}/Scout2T2w.nii.gz -searchrx -30 30 -searchry -30 30 -searchrz -30 30 -cost mutualinfo
+  ${FSLDIR}/bin/convert_xfm -omat "$fMRIFolder"/T2w2Scout.mat -inverse "$fMRIFolder"/Scout2T2w.mat
+  ${FSLDIR}/bin/applywarp --interp=nn -i ${T1wFolder}/${T2wRestoreImageBrain} -r ${fMRIFolder}/${ScoutName}_gdc_undistorted --premat="$fMRIFolder"/T2w2Scout.mat -o ${fMRIFolder}/Scout_brain_mask.nii.gz
   ${FSLDIR}/bin/fslmaths ${fMRIFolder}/Scout_brain_mask.nii.gz -bin ${fMRIFolder}/Scout_brain_mask.nii.gz
   ${FSLDIR}/bin/fslmaths ${fMRIFolder}/${ScoutName}_gdc_undistorted -mas ${fMRIFolder}/Scout_brain_mask.nii.gz ${fMRIFolder}/Scout_brain_dc.nii.gz
-  ${FSLDIR}/bin/epi_reg --epi=${fMRIFolder}/Scout_brain_dc.nii.gz --pedir=${UnwarpDir} --t1=${T1wFolder}/${T1wImage} --t1brain=${T1wFolder}/${T1wRestoreImageBrain} --out=${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init
-  #  generate combined warpfields and spline interpolated images + apply bias field correction
-  ${FSLDIR}/bin/convertwarp --relout --rel -r ${T1wFolder}/${T1wImage} --warp1=${fMRIFolder}/WarpField --postmat=${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init.mat -o ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init_warp
+## Added step here to make it work better, re-registering the maked brain to the T2 brain: This is ca;;ed undistorted2T1w even though it's registered to T2. but wanted to keep naming the same for future checks. 
+echo " ${ScoutName}_gdc_undistorted2T1w_init.mat is technically ${ScoutName}_gdc_undistorted2T2w_init.mat "
+  ${FSLDIR}/bin/flirt -interp spline -dof 6 -in ${fMRIFolder}/Scout_brain_dc.nii.gz -ref ${T1wFolder}/${T2wRestoreImageBrain} -omat "$fMRIFolder"/${ScoutName}_gdc_undistorted2T1w_init.mat -out ${fMRIFolder}/${ScoutName}_gdc_undistorted2T2w_init -searchrx -30 30 -searchry -30 30 -searchrz -30 30 -cost mutualinfo
+#Taking out epi_reg because it is really bad at registering especially with contrast images. 
+#  ${FSLDIR}/bin/epi_reg -v --epi=${fMRIFolder}/Scout_brain2T1w.nii.gz --pedir=${UnwarpDir} --t1=${T1wFolder}/${T1wRestoreImage} --t1brain=${T1wFolder}/${T1wRestoreImageBrain} --out=${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init
 
-  ${FSLDIR}/bin/applywarp --rel --interp=spline -i ${fMRIFolder}/Jacobian.nii.gz -r ${T1wFolder}/${T1wImage} --premat=${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init.mat -o ${fMRIFolder}/Jacobian2T1w.nii.gz
-  ${FSLDIR}/bin/applywarp --rel --interp=spline -i ${fMRIFolder}/${ScoutName}_gdc -r ${T1wFolder}/${T1wImage} -w ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init_warp -o ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init
+  #  generate combined warpfields and spline interpolated images + apply bias field correction
+  ${FSLDIR}/bin/convertwarp --relout --rel -r ${T1wFolder}/${T2wRestoreImage} --warp1=${fMRIFolder}/WarpField --postmat=${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init.mat -o ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init_warp
+
+#this gives me a blank image, because the jacobian is empty. Trying other Jacobian in FielMap folder which works. This is because Jacobian gets overwritten with this file later so if this step doesn't work its not going to work.But should work next time when the above is fixed. 
+  ${FSLDIR}/bin/applywarp --rel --interp=spline -i ${fMRIFolder}/Jacobian.nii.gz -r ${T1wFolder}/${T2wRestoreImage} --premat=${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init.mat -o ${fMRIFolder}/Jacobian2T1w.nii.gz 
+ #${FSLDIR}/bin/applywarp --rel --interp=spline -i ${fMRIFolder}/FieldMap/Jacobian.nii.gz -r ${T1wFolder}/${T2wRestoreImage} --premat=${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init.mat -o ${fMRIFolder}/Jacobian2T1w.nii.gz
+
+
+${FSLDIR}/bin/applywarp --rel --interp=spline -i ${fMRIFolder}/${ScoutName}_gdc -r ${T1wFolder}/${T2wRestoreImage} -w ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init_warp -o ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init
   # apply Jacobian correction to scout image (optional)
   ${FSLDIR}/bin/fslmaths ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init -div ${T1wFolder}/${BiasField} -mul ${fMRIFolder}/Jacobian2T1w.nii.gz ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init.nii.gz
   SUBJECTS_DIR=${T1wFolder}
 
-
+##Done with Bene's Changes #########################################################################################################################################################################
 
   #echo ${FREESURFER_HOME}/bin/bbregister --s ${Subject} --mov ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init.nii.gz --surf white --init-reg ${T1wFolder}/mri/transforms/eye.dat --bold --reg ${fMRIFolder}/EPItoT1w.dat --o ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w.nii.gz
   #${FREESURFER_HOME}/bin/bbregister --s ${Subject} --mov ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w_init.nii.gz --surf white --init-reg ${T1wFolder}/mri/transforms/eye.dat --bold --reg    ${fMRIFolder}/EPItoT1w.dat --o ${fMRIFolder}/${ScoutName}_gdc_undistorted2T1w.nii.gz

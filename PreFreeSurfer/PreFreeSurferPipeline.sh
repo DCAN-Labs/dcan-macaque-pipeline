@@ -244,6 +244,12 @@ for TXw in ${Modalities} ; do
     ${RUN} ${PipelineScripts}/AnatomicalAverage.sh -o ${TXwFolder}/${TXwImage} -s ${TXwTemplate} -m ${TemplateMask} \
     -n -w ${TXwFolder}/Average${TXw}Images --noclean -v -b $BrainSize $OutputTXwImageSTRING
     #fi
+   ###Added by Bene to use created warp above and apply it to the brain 
+    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_brain -bin ${TXwFolder}/${TXwImage}_mask
+    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_brain -bin ${TXwFolder}/${TXwImage}_mask_rot2first  #take this out once done testing just something for QC for now
+    $FSLDIR/bin/applywarp --rel -i ${TXwFolder}/${TXwImage}_mask --premat=${TXwFolder}/Average${TXw}Images/ToHalfTrans0001.mat -r ${TXwFolder}/${TXwImage} -o ${TXwFolder}/${TXwImage}_mask --interp=nn
+    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage} -mas ${TXwFolder}/${TXwImage}_mask ${TXwFolder}/${TXwImage}_brain
+    ### Done with edits by Bene
   else
     echo "ONLY ONE AVERAGE FOUND: COPYING"
     ${RUN} ${FSLDIR}/bin/imcp ${TXwFolder}/${TXwImage}1_gdc ${TXwFolder}/${TXwImage}
@@ -287,13 +293,16 @@ for TXw in ${Modalities} ; do
 #			--fnirtconfig=${FNIRTConfig};
 #    ${FSLDIR}/bin/flirt -in ${TXwFolder}/${TXwImage}_brain -ref ${TXwTemplate} -applyxfm -init ${TXwFolder}/xfms/acpc.mat -out ${TXwFolder}/${TXwImage}_acpc_brain
 #    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
-#**   if [ $TXw = T1wN ]; then ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc -mas ${T1wFolder}/${T1wImage}_acpc_brain_mask ${TXwFolder}/${TXwImage}_acpc_brain; fi
-
-    #apply acpc.mat to head
+#**   if [ $TXw = T1wN ]; then ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc -mas ${T1wFolder}/${T1wImage}_acpc_brain_mask ${TXwFolder}/${TXwImage}_acpc_brain; fi 
+#apply acpc.mat to head
     ${FSLDIR}/bin/applywarp --rel --interp=spline -i "${TXwFolder}/${TXwImage}" -r "${TXwTemplate}" \
         --premat="${TXwFolder}/xfms/acpc.mat" -o "${TXwFolder}/${TXwImage}_acpc"
-    #make brain mask
-    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
+	
+	#Bene alternative fix added: apply warp to mask, then make brain mask and use it to mask T1w acpc 
+   	${FSLDIR}/bin/applywarp --rel --interp=nn -i ${TXwFolder}/${TXwImage}_mask -r ${TXwTemplateBrain} --premat=${TXwFolder}/xfms/acpc.mat -o ${TXwFolder}/${TXwImage}_acpc_brain_mask
+	${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc -mas ${TXwFolder}/${TXwImage}_acpc_brain_mask ${TXwFolder}/${TXwImage}_acpc_brain
+    #make brain mask taken out by Bene and replaced with above
+    #${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
 done
 
 ######## END LOOP over T1w and T2w #########
