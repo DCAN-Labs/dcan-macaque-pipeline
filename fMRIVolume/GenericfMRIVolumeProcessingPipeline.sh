@@ -268,7 +268,7 @@ elif [ $DistortionCorrection = TOPUP ]; then
   echo "this has only been tested with T2, if we don't have one, fake it here"
   #Create fake "T2" if it doesn't exist
   #if [ $useT2 = "True" ] ; then
-  if [[ "TRUE"==${useT2^^}]] ; then
+  if [[ "TRUE"==${useT2^^} ]]; then
     T2wRestoreImage=T2w_acpc_dc_restore
     T2wRestoreImageBrain=T2w_acpc_dc_restore_brain
   else
