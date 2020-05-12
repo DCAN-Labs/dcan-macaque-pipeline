@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+# set -e
 
 source $FREESURFER_HOME/SetUpFreeSurfer.sh
 
