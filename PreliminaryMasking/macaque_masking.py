@@ -92,7 +92,8 @@ def interface(path, t1w_images, t2w_images, functional_images, dfm_image,
         't2w_brain_mask': os.path.join(wd, 'T2w_brain_mask.nii.gz'),
         'dfm_image': dfm_image,
         'dfm_image_mask': os.path.join(wd, 'dfm_mask.nii.gz'),
-        'dfm_image_brain': os.path.join(wd, 'dfm_brain.nii.gz')
+        'dfm_image_brain': os.path.join(wd, 'dfm_brain.nii.gz'),
+        'n4_bias_field': os.path.join(wd, 'N4BiasField.nii.gz')
     }
 
     if not os.path.exists(wd):
@@ -114,6 +115,8 @@ def interface(path, t1w_images, t2w_images, functional_images, dfm_image,
     # @TODO initial N4BiasCorrection is necessary?
 
     # mask images using ants
+    bias_field_correct_t1w = '{ANTSPATH}/N4BiasFieldCorrection -d 3 -i {t1w} -o [{t1w},{n4_bias_field}]'.format(**kwargs)
+
     rigid_align = '{FSLDIR}/bin/flirt -v -dof 6 -in {t1w} -ref {atlas_head} ' \
                   '-out {t1w_in_atl} -omat {t1w2atl} -interp spline ' \
                   '-searchrx -30 30 -searchry -30 30 -searchrz -30 ' \
@@ -134,6 +137,7 @@ def interface(path, t1w_images, t2w_images, functional_images, dfm_image,
                        'warp_mask} -ref {t1w} -o {brain_mask} -applyxfm ' \
                        '-init {atl2t1w}'.format(**kwargs)
     mask_t1w = 'fslmaths {t1w} -mas {brain_mask} {t1w_brain}'.format(**kwargs)
+    bias_field_correct_t2w = '{ANTSPATH}/N4BiasFieldCorrection -d 3 -i {t2w} -o [{t2w},{n4_bias_field}]'.format(**kwargs)
     t1w2t2w_rigid = 'flirt -dof 6 -cost mutualinfo -in {t1w} -ref {t2w} ' \
                     '-omat {t1w2t2w}'.format(**kwargs)
     t1w2t2w_mask = 'flirt -in {brain_mask} -interp nearestneighbour -ref {' \
@@ -141,8 +145,8 @@ def interface(path, t1w_images, t2w_images, functional_images, dfm_image,
                    't1w2t2w}'.format(**kwargs)
     mask_t2w = 'fslmaths {t2w} -mas {t2w_brain_mask} ' \
                '{t2w_brain}'.format(**kwargs)
-    cmdlist += [rigid_align, create_mask, ants_warp, apply_ants_warp,
-                inverse_mat, rigid_align_mask, mask_t1w, t1w2t2w_rigid,
+    cmdlist += [bias_field_correct_t1w, rigid_align, create_mask, ants_warp, apply_ants_warp,
+                inverse_mat, rigid_align_mask, mask_t1w, bias_field_correct_t2w, t1w2t2w_rigid,
                 t1w2t2w_mask, mask_t2w]
 
     # create fieldmap mask and bet mask if applicable
