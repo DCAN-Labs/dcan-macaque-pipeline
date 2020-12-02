@@ -244,6 +244,9 @@ for TXw in ${Modalities} ; do
     ${RUN} ${PipelineScripts}/AnatomicalAverage.sh -o ${TXwFolder}/${TXwImage} -s ${TXwTemplate} -m ${TemplateMask} \
     -n -w ${TXwFolder}/Average${TXw}Images --noclean -v -b $BrainSize $OutputTXwImageSTRING
     #fi
+    ${RUN} ${FSLDIR}/bin/immv ${TXwFolder}/${TXwImage} ${TXwFolder}/${TXwImage}_PreN4
+    ${RUN} ${ANTSPATH}${ANTSPATH:+/}N4BiasFieldCorrection -d 3 -i ${TXwFolder}/${TXwImage}_PreN4.nii.gz -o [${TXwFolder}/${TXwImage}.nii.gz,${TXwFolder}/N4BiasField.nii.gz]
+
    ###Added by Bene to use created warp above and apply it to the brain 
     ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_brain -bin ${TXwFolder}/${TXwImage}_mask
     ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_brain -bin ${TXwFolder}/${TXwImage}_mask_rot2first  #take this out once done testing just something for QC for now
@@ -254,6 +257,10 @@ for TXw in ${Modalities} ; do
     echo "ONLY ONE AVERAGE FOUND: COPYING"
     ${RUN} ${FSLDIR}/bin/imcp ${TXwFolder}/${TXwImage}1_gdc ${TXwFolder}/${TXwImage}
   fi
+
+  # Apply ANTs N4BiasFieldCorrection
+  ${RUN} ${FSLDIR}/bin/immv ${TXwFolder}/${TXwImage} ${TXwFolder}/${TXwImage}_PreN4
+  ${RUN} ${ANTSPATH}${ANTSPATH:+/}N4BiasFieldCorrection -d 3 -i ${TXwFolder}/${TXwImage}_PreN4.nii.gz -o [${TXwFolder}/${TXwImage}.nii.gz,${TXwFolder}/N4BiasField.nii.gz]
 
 #### ACPC align T1w and T2w image to 0.7mm MNI T1wTemplate to create native volume space ####
 #**  if [ ! $TXw = "T1wN" ]; then
