@@ -98,9 +98,29 @@ TopupConfig=`getopt1 "--topupconfig" $@`  # "${27}" #Config for topup or "NONE" 
 BiasFieldSmoothingSigma=`getopt1 "--bfsigma" $@`  # "$9"
 RUN=`getopt1 "--printcom" $@`  # use ="echo" for just printing everything and not running the commands (default is to run)
 useT2=`getopt1 "--useT2" $@` # useT2 flag added for excluding or including T2 processing, grabbed from batch file
-T1wNormalized=`getopt1 "--t1normalized" $@` # brain normalized to  matter intensities
+T1wNormalized=`getopt1 "--t1normalized" $@` # brain normalized to matter intensities
 useReverseEpi=`getopt1 "--revepi" $@`
 MultiTemplateDir=`getopt1 "--multitemplatedir" $@`
+T1BrainMask=`getopt1 "--t1brainmask" $@` # optional user-specified T1 mask
+T2BrainMask=`getopt1 "--t2brainmask" $@` # optional user-specified T2 mask
+echo T1BrainMask
+echo T2BrainMask
+
+
+if [ -n "${T1BrainMask}" ] && [[ "${T1BrainMask^^}" == "NONE" ]] ; then
+    unset T1BrainMask
+elif [ -n "${T1BrainMask}" ] ; then
+    log_Msg User supplied T1BrainMask is ${T1BrainMask}.
+    assert_file_exists ${T1BrainMask} ${LINENO}
+fi
+
+
+if [ -n "${T2BrainMask}" ] && [[ "${T2BrainMask^^}" == "NONE" ]] ; then
+    unset T2BrainMask
+elif [ -n "${T2BrainMask}" ] ; then
+    log_Msg User supplied T2BrainMask is ${T2BrainMask}.
+    assert_file_exists ${T2BrainMask} ${LINENO}
+fi
 
 
 # Defaults
@@ -184,6 +204,8 @@ for TXw in ${Modalities} ; do
     TXwTemplateBrain=${T1wTemplateBrain}
     TXwTemplate2mm=${T1wTemplate2mm} # It points to the template at 2.0 mm skull+brain, OMD (Remember, scan was performed at 0.7mm isotropic)
     TXwExt=${Subject}_T1w_MPR_average
+    if [ -n "${T1BrainMask}" ]; then
+      TxwBrainMask=${T1BrainMask}
   elif [ $TXw = T2w ]; then
     TXwInputImages="${T2wInputImages}"
     TXwFolder=${T2wFolder}
@@ -192,18 +214,20 @@ for TXw in ${Modalities} ; do
     TXwTemplateBrain=${T2wTemplateBrain}
     TXwTemplate2mm=${T2wTemplate2mm}
     TXwExt=${Subject}_T2w_SPC_average
-#**  elif [ $TXw = T1wN ]; then
-#    TXwInputImages="${T1wNInputImages}"
-#    TXwFolder=${T1wNFolder}
-#    TXwImage=${T1wNImage} #T1W  Normalized
-#    TXwTemplate=${T1wTemplate} # It points to the template at 0.7 mm skull+brain, OMD (Remember, scan was performed at 0.7mm isotropic)
-#    TXwTemplateBrain=${T1wTemplateBrain}
-#    TXwTemplate2mm=${T1wTemplate2mm} # It points to the template at 2.0 mm skull+brain, OMD (Remember, scan was performed at 0.7mm isotropic)
-#    TXwExt=${Subject}_T1w_MPR_average_AdultInt
+    if [ -n "${T2BrainMask}" ]; then
+      TxwBrainMask=${T2BrainMask}
+  #**  elif [ $TXw = T1wN ]; then
+  #    TXwInputImages="${T1wNInputImages}"
+  #    TXwFolder=${T1wNFolder}
+  #    TXwImage=${T1wNImage} #T1W  Normalized
+  #    TXwTemplate=${T1wTemplate} # It points to the template at 0.7 mm skull+brain, OMD (Remember, scan was performed at 0.7mm isotropic)
+  #    TXwTemplateBrain=${T1wTemplateBrain}
+  #    TXwTemplate2mm=${T1wTemplate2mm} # It points to the template at 2.0 mm skull+brain, OMD (Remember, scan was performed at 0.7mm isotropic)
+  #    TXwExt=${Subject}_T1w_MPR_average_AdultInt
   fi
   OutputTXwImageSTRING=""
 
-#### Gradient nonlinearity correction  (for T1w and T2w) ####
+  #### Gradient nonlinearity correction  (for T1w and T2w) ####
 
   if [ ! $GradientDistortionCoeffs = "NONE" ] ; then
 	   i=1
@@ -232,7 +256,7 @@ for TXw in ${Modalities} ; do
 	  done
   fi
 
-#### Average Like Scans ####
+  #### Average Like Scans ####
 
   if [ `echo $TXwInputImages | wc -w` -gt 1 ] ; then
     mkdir -p ${TXwFolder}/Average${TXw}Images
@@ -244,9 +268,6 @@ for TXw in ${Modalities} ; do
     ${RUN} ${PipelineScripts}/AnatomicalAverage.sh -o ${TXwFolder}/${TXwImage} -s ${TXwTemplate} -m ${TemplateMask} \
     -n -w ${TXwFolder}/Average${TXw}Images --noclean -v -b $BrainSize $OutputTXwImageSTRING
     #fi
-    ${RUN} ${FSLDIR}/bin/immv ${TXwFolder}/${TXwImage} ${TXwFolder}/${TXwImage}_PreN4
-    ${RUN} ${ANTSPATH}${ANTSPATH:+/}N4BiasFieldCorrection -d 3 -i ${TXwFolder}/${TXwImage}_PreN4.nii.gz -o [${TXwFolder}/${TXwImage}.nii.gz,${TXwFolder}/N4BiasField.nii.gz]
-
    ###Added by Bene to use created warp above and apply it to the brain 
     ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_brain -bin ${TXwFolder}/${TXwImage}_mask
     ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_brain -bin ${TXwFolder}/${TXwImage}_mask_rot2first  #take this out once done testing just something for QC for now
@@ -258,12 +279,8 @@ for TXw in ${Modalities} ; do
     ${RUN} ${FSLDIR}/bin/imcp ${TXwFolder}/${TXwImage}1_gdc ${TXwFolder}/${TXwImage}
   fi
 
-  # Apply ANTs N4BiasFieldCorrection
-  ${RUN} ${FSLDIR}/bin/immv ${TXwFolder}/${TXwImage} ${TXwFolder}/${TXwImage}_PreN4
-  ${RUN} ${ANTSPATH}${ANTSPATH:+/}N4BiasFieldCorrection -d 3 -i ${TXwFolder}/${TXwImage}_PreN4.nii.gz -o [${TXwFolder}/${TXwImage}.nii.gz,${TXwFolder}/N4BiasField.nii.gz]
-
-#### ACPC align T1w and T2w image to 0.7mm MNI T1wTemplate to create native volume space ####
-#**  if [ ! $TXw = "T1wN" ]; then
+  #### ACPC align T1w and T2w image to 0.7mm MNI T1wTemplate to create native volume space ####
+  #**  if [ ! $TXw = "T1wN" ]; then
   mkdir -p ${TXwFolder}/ACPCAlignment
   # Assume Brain has been placed in T1w from Prep stage.
   ${RUN} ${PipelineScripts}/ACPCAlignment.sh \
@@ -273,43 +290,63 @@ for TXw in ${Modalities} ; do
   --out=${TXwFolder}/${TXwImage}_acpc_brain \
   --omat=${TXwFolder}/xfms/acpc.mat \
   --brainsize=${BrainSize}
-  # Apply linear transform to head.
-#  flirt -in ${TXwFolder}/${TXwImage}_brain -ref ${TXwTemplate} -applyxfm -init ${TXwFolder}/xfms/acpc.mat -out ${TXwFolder}/${TXwImage}_acpc_brain
-#  ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
-#**  else
-    # ensure that the same T1w transform is applied to normed brain.
-#    echo "applying acpc warp to Normalized image"
-#    cp ${T1wFolder}/xfms/acpc.mat ${TXwFolder}/xfms/acpc.mat
-#    ${FSLDIR}/bin/applywarp --rel --interp=spline -i "${TXwFolder}/${TXwImage}" -r "${TXwTemplate}" \
-#    --premat="${TXwFolder}/xfms/acpc.mat" -o "${TXwFolder}/${TXwImage}_acpc"
-#  fi
+    # Apply linear transform to head.
+  #  flirt -in ${TXwFolder}/${TXwImage}_brain -ref ${TXwTemplate} -applyxfm -init ${TXwFolder}/xfms/acpc.mat -out ${TXwFolder}/${TXwImage}_acpc_brain
+  #  ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
+  #**  else
+      # ensure that the same T1w transform is applied to normed brain.
+  #    echo "applying acpc warp to Normalized image"
+  #    cp ${T1wFolder}/xfms/acpc.mat ${TXwFolder}/xfms/acpc.mat
+  #    ${FSLDIR}/bin/applywarp --rel --interp=spline -i "${TXwFolder}/${TXwImage}" -r "${TXwTemplate}" \
+  #    --premat="${TXwFolder}/xfms/acpc.mat" -o "${TXwFolder}/${TXwImage}_acpc"
+  #  fi
 
-#### Brain Extraction (FNIRT-based Masking) ####
+  #### Brain Extraction (FNIRT-based Masking) ####
 
-############ FNL - this is performed using ANTs in Prep
-#  mkdir -p ${TXwFolder}/BrainExtraction_FNIRTbased
-#  ${RUN} ${PipelineScripts}/BrainExtraction_FNIRTbased.sh \
-#			--workingdir=${TXwFolder}/BrainExtraction_ANTsbased \
-#			--in=${TXwFolder}/${TXwImage}_acpc \
-#			--ref=${TXwTemplate} \
-#			--refmask=${TemplateMask} \
-#			--ref2mm=${TXwTemplate2mm} \
-#			--ref2mmmask=${Template2mmMask} \
-#			--outbrain=${TXwFolder}/${TXwImage}_acpc_brain \
-#			--outbrainmask=${TXwFolder}/${TXwImage}_acpc_brain_mask \
-#			--fnirtconfig=${FNIRTConfig};
-#    ${FSLDIR}/bin/flirt -in ${TXwFolder}/${TXwImage}_brain -ref ${TXwTemplate} -applyxfm -init ${TXwFolder}/xfms/acpc.mat -out ${TXwFolder}/${TXwImage}_acpc_brain
-#    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
-#**   if [ $TXw = T1wN ]; then ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc -mas ${T1wFolder}/${T1wImage}_acpc_brain_mask ${TXwFolder}/${TXwImage}_acpc_brain; fi 
-#apply acpc.mat to head
+
+  ############ FNL - this is performed using ANTs in Prep
+  #  mkdir -p ${TXwFolder}/BrainExtraction_FNIRTbased
+  #  ${RUN} ${PipelineScripts}/BrainExtraction_FNIRTbased.sh \
+  #			--workingdir=${TXwFolder}/BrainExtraction_ANTsbased \
+  #			--in=${TXwFolder}/${TXwImage}_acpc \
+  #			--ref=${TXwTemplate} \
+  #			--refmask=${TemplateMask} \
+  #			--ref2mm=${TXwTemplate2mm} \
+  #			--ref2mmmask=${Template2mmMask} \
+  #			--outbrain=${TXwFolder}/${TXwImage}_acpc_brain \
+  #			--outbrainmask=${TXwFolder}/${TXwImage}_acpc_brain_mask \
+  #			--fnirtconfig=${FNIRTConfig};
+  #    ${FSLDIR}/bin/flirt -in ${TXwFolder}/${TXwImage}_brain -ref ${TXwTemplate} -applyxfm -init ${TXwFolder}/xfms/acpc.mat -out ${TXwFolder}/${TXwImage}_acpc_brain
+  #    ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
+  #**   if [ $TXw = T1wN ]; then ${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc -mas ${T1wFolder}/${T1wImage}_acpc_brain_mask ${TXwFolder}/${TXwImage}_acpc_brain; fi 
+  #apply acpc.mat to head
     ${FSLDIR}/bin/applywarp --rel --interp=spline -i "${TXwFolder}/${TXwImage}" -r "${TXwTemplate}" \
         --premat="${TXwFolder}/xfms/acpc.mat" -o "${TXwFolder}/${TXwImage}_acpc"
+
+  # Thomas alternative fix added: use user-specified mask
+
+  if [ -n "${TxwBrainMask}" ]; then
+    # The user has supplied a Txw brain mask. 
+    # Extract the Txw brain.
+
+    # Copy the user-supplied mask to ${T1wFolder}/${T1wImage}_brain_mask.
+    imcp ${TxwBrainMask} ${TxwFolder}/${TxwImage}_brain_mask
+    
+    # The Txw head was ACPC aligned above. Use the resulting
+    # acpc.mat to align the mask.
+    ${FSLDIR}/bin/applywarp --rel --interp=nn -i ${TxwFolder}/${TxwImage}_brain_mask -r ${TxwTemplateBrain} --premat=${TxwFolder}/xfms/acpc.mat -o ${TxwFolder}/${TxwImage}_acpc_brain_mask
+
+    # Use the ACPC aligned Txw brain mask to extract the Txw brain.
+    ${FSLDIR}/bin/fslmaths ${TxwFolder}/${TxwImage}_acpc -mas ${TxwFolder}/${TxwImage}_acpc_brain_mask ${TxwFolder}/${TxwImage}_acpc_brain
+
+  else
 	
 	#Bene alternative fix added: apply warp to mask, then make brain mask and use it to mask T1w acpc 
    	${FSLDIR}/bin/applywarp --rel --interp=nn -i ${TXwFolder}/${TXwImage}_mask -r ${TXwTemplateBrain} --premat=${TXwFolder}/xfms/acpc.mat -o ${TXwFolder}/${TXwImage}_acpc_brain_mask
 	${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc -mas ${TXwFolder}/${TXwImage}_acpc_brain_mask ${TXwFolder}/${TXwImage}_acpc_brain
     #make brain mask taken out by Bene and replaced with above
     #${FSLDIR}/bin/fslmaths ${TXwFolder}/${TXwImage}_acpc_brain -bin ${TXwFolder}/${TXwImage}_acpc_brain_mask
+  fi
 done
 
 ######## END LOOP over T1w and T2w #########
