@@ -212,6 +212,7 @@ main()
 
 	# Cycle through specified subjects
     useT2=${useT2:-true} # sets the useT2 flag default to "true" - AP 20162111
+    useAntsReg=${useAntsReg:-false}
 	for Subject in $Subjlist ; do
 		echo $Subject
 
@@ -469,7 +470,7 @@ main()
 			--brainsize="$BrainSize" \
 			--fnirtconfig="$FNIRTConfig" \
 			--fmapmag="$MagnitudeInputName" \
-                        --fmapmagbrain="$StudyFolder"/masks/$(basename $(remove_ext "$MagnitudeInputName"))_brain.nii.gz \
+            --fmapmagbrain="$StudyFolder"/masks/$(basename $(remove_ext "$MagnitudeInputName"))_brain.nii.gz \
 			--fmapphase="$PhaseInputName" \
 			--fmapgeneralelectric="$GEB0InputName" \
 			--echodiff="$TE" \
@@ -483,7 +484,10 @@ main()
 			--gdcoeffs="$GradientDistortionCoeffs" \
 			--avgrdcmethod="$AvgrdcSTRING" \
 			--topupconfig="$TopupConfig" \
-                        --useT2="$useT2" \
+            --useT2="$useT2" \
+			--useAntsReg="$useAntsReg" \\
+			--StudyTemplate=${StudyTemplate} \
+			--StudyTemplateBrain=${StudyTemplateBrain} \
 			--t1normalized="$T1wNormalized" \
 			--printcom=$PRINTCOM \
 			--revepi=${ReverseEpi:-false}
