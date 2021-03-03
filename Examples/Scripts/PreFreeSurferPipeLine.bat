@@ -84,6 +84,8 @@ for Subject in $Subjlist ; do
   T2wTemplate2mm="${HCPPIPEDIR_Templates}/MacaqueYerkes19_T2w_1.0mm_grad.nii.gz" #MacaqueYerkes1.0mm T2wTemplate
   TemplateMask="${HCPPIPEDIR_Templates}/MacaqueYerkes19_T1w_0.5mm_brain_mask_dil.nii.gz" #Brain mask MacaqueYerkes0.5mm template
   Template2mmMask="${HCPPIPEDIR_Templates}/MacaqueYerkes19_T1w_1.0mm_brain_mask_dil.nii.gz" #MacaqueYerkes1.0mm template
+  StudyTemplate="${HCPPIPEDIR_Templates}/MacaqueYerkes19_T1w_0.5mm_grad.nii.gz"
+  StudyTemplateBrain="${HCPPIPEDIR_Templates}/MacaqueYerkes19_T1w_0.5mm_brain.nii.gz"
 
   #Scan Settings
   TE="2.46" #delta TE in ms for field map or "NONE" if not used
@@ -100,6 +102,7 @@ for Subject in $Subjlist ; do
   AvgrdcSTRING="FIELDMAP" #Averaging and readout distortion correction methods: "NONE" = average any repeats with no readout correction "FIELDMAP" = average any repeats and use field map for readout correction "TOPUP" = Use Spin Echo FieldMap
   TopupConfig="NONE" #Config for topup or "NONE" if not used
   BiasFieldSmoothingSigma="1.5"
+  useAntsReg="false"
 
   ${FSLDIR}/bin/fsl_sub ${QUEUE} \
      ${HCPPIPEDIR}/PreFreeSurfer/PreFreeSurferPipeline.sh \
@@ -131,6 +134,9 @@ for Subject in $Subjlist ; do
       --avgrdcmethod="$AvgrdcSTRING" \
       --topupconfig="$TopupConfig" \
       --bfsigma="$BiasFieldSmoothingSigma" \
+      --useAntsReg="${useAntsReg}" \
+      --StudyTemplate="${StudyTemplate}" \
+      --StudyTemplateBrain="${StudyTemplateBrain}" \
       --printcom=$PRINTCOM
       
   # The following lines are used for interactive debugging to set the positional parameters: $1 $2 $3 ...
@@ -163,6 +169,9 @@ for Subject in $Subjlist ; do
       --avgrdcmethod=${AvgrdcSTRING} \
       --topupconfig=${TopupConfig} \
       --bfsigma=${BiasFieldSmoothingSigma} \
+      --useAntsReg=${useAntsReg} \
+      --StudyTemplate=${StudyTemplate} \
+      --StudyTemplateBrain=${StudyTemplateBrain} \
       --printcom=${PRINTCOM}"
 
   echo ". ${EnvironmentScript}"

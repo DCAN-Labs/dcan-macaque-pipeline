@@ -18,10 +18,10 @@ Usage() {
   echo "                --t1rest=<bias corrected t1w image>"
   echo "                --t1restbrain=<bias corrected, brain extracted t1w image>"
   echo "                --t2=<t2w image>"
-  echo "	        	--t2rest=<bias corrected t2w image>"
+  echo "                --t2rest=<bias corrected t2w image>"
   echo "                --t2restbrain=<bias corrected, brain extracted t2w image>"
-  echo " 	        	--studytemplate=<user-specified study template>"
-  echo "  	        	--studytemplatebrain=<user-specified study template brain>"
+  echo "                --studytemplate=<user-specified study template>"
+  echo "                --studytemplatebrain=<user-specified study template brain>"
   echo "                --ref=<reference image>"
   echo "                --refbrain=<reference brain image>"
   echo "                --refmask=<reference brain mask>"
@@ -33,10 +33,10 @@ Usage() {
   echo "                --ot1rest=<output bias corrected t1w to MNI>"
   echo "                --ot1restbrain=<output bias corrected, brain extracted t1w to MNI>"
   echo "                --ot2=<output t2w to MNI>"
-  echo "		        --ot2rest=<output bias corrected t2w to MNI>"
+  echo "                --ot2rest=<output bias corrected t2w to MNI>"
   echo "                --ot2restbrain=<output bias corrected, brain extracted t2w to MNI>"
   echo "                [--fnirtconfig=<FNIRT configuration file>]"
-  echo "                --useT2=<false in T2w image is unavailable, default is true>"
+  echo "                --useT2=<false if T2w image is unavailable, default is true>"
 }
 
 # function for parsing options
