@@ -133,6 +133,7 @@ T1BrainMask=$(getopt1 "--t1brainmask" $@) # optional user-specified T1 mask
 T2BrainMask=$(getopt1 "--t2brainmask" $@) # optional user-specified T2 mask
 StudyTemplate=$(getopt1 "--StudyTemplate" $@) # optional user-specified study template
 StudyTemplateBrain=$(getopt1 "--StudyTemplateBrain" $@) # optional user-specified study template brain
+ASegDir=$(getopt1 "--asegdir" $@) # directory of optional user-specified segmentation (aseg_acpc.nii.gz)
 
 # useAntsReg flag added for using ANTs registration instead of FSL
 useAntsReg=$(getopt1 "--useAntsReg" $@)
@@ -555,6 +556,19 @@ for ((i = 0; i < ${#Council[@]}; i++)); do
 done
 echo $cmd
 $cmd
+
+if ! [ -z "${ASegDir}" ] ; then
+    if [ -d ${ASegDir} ] && [ -e ${ASegDir}/aseg_acpc.nii.gz ] ; then
+        # We also have a supplied aseg file for this subject.
+        echo Using supplied aseg file: ${ASegDir}/aseg_acpc.nii.gz
+        # Rename (but keep) the one we just generated....
+        mv ${T1wFolder}/aseg_acpc.nii.gz ${T1wFolder}/aseg_acpc_dcan-derived.nii.gz
+        # Copy the one that was supplied; it will be used from here on....
+        scp -p ${ASegDir}/aseg_acpc.nii.gz ${T1wFolder}/aseg_acpc.nii.gz
+    else
+        echo Using aseg file generated with JLF.
+    fi
+fi
 
 #### Next stage: FreeSurfer/FreeSurferPipeline.sh
 echo "-------------------------------"
