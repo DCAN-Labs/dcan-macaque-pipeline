@@ -557,14 +557,14 @@ done
 echo $cmd
 $cmd
 
-if ! [ -z "${ASegDir}" ] ; then
+if ! [ -z ${ASegDir} ] && [ ${ASegDir} != ${T1wFolder} ]; then
     if [ -d ${ASegDir} ] && [ -e ${ASegDir}/aseg_acpc.nii.gz ] ; then
         # We also have a supplied aseg file for this subject.
         echo Using supplied aseg file: ${ASegDir}/aseg_acpc.nii.gz
         # Rename (but keep) the one we just generated....
         mv ${T1wFolder}/aseg_acpc.nii.gz ${T1wFolder}/aseg_acpc_dcan-derived.nii.gz
         # Copy the one that was supplied; it will be used from here on....
-        scp -p ${ASegDir}/aseg_acpc.nii.gz ${T1wFolder}/aseg_acpc.nii.gz
+        cp -p ${ASegDir}/aseg_acpc.nii.gz ${T1wFolder}/aseg_acpc.nii.gz
     else
         echo Using aseg file generated with JLF.
     fi
