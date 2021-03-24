@@ -31,7 +31,9 @@ useT2=`opts_GetOpt1 "--useT2" $@` #AP 20162111
 MaxThickness=`opts_GetOpt1 "--maxThickness" $@` # Max threshold for thickness measurements (default = 5mm)
 NormMethod=`opts_GetOpt1 "--normalizationMethod" $@` # Normalization method to be used (or none)
 hypernormalize=`opts_GetOpt1 "--hypernormalize" $@` #deprecated - lose after BIDSApp doesn't use it anymore.
-
+NormGMStdDevScale=`opts_GetOpt1 "--normgmstddevscale" $@` # normalized GM std dev scale factor
+NormWMStdDevScale=`opts_GetOpt1 "--normwmstddevscale" $@` # normalized WM std dev scale factor
+NormCSFStdDevScale=`opts_GetOpt1 "--normcsfstddevscale" $@` # normalized CSF std dev scale factor
 if [ -z "${NormMethod}" ] ; then
     # Default is to use the adult grey matter intensity profile.
     NormMethod="ADULT_GM_IP"
@@ -59,7 +61,7 @@ Subnum=$SubjectID
 if [[ "${NormMethod^^}" == "NONE" ]] ; then
     echo Skipping hyper-normalization step per request.
 else
-    ${HCPPIPEDIR_FS}/hypernormalize.sh ${SubjectDIR} ${NormMethod^^}
+    ${HCPPIPEDIR_FS}/hypernormalize.sh ${SubjectDIR} ${NormMethod^^} ${NormGMStdDevScale} ${NormWMStdDevScale} ${NormCSFStdDevScale}
     T1wNImage="T1wN_acpc.nii.gz"
     T1wNImageBrain="T1wN_acpc_brain.nii.gz"
     echo T1wNImage=$T1wNImage
