@@ -34,6 +34,14 @@ hypernormalize=`opts_GetOpt1 "--hypernormalize" $@` #deprecated - lose after BID
 NormGMStdDevScale=`opts_GetOpt1 "--normgmstddevscale" $@` # normalized GM std dev scale factor
 NormWMStdDevScale=`opts_GetOpt1 "--normwmstddevscale" $@` # normalized WM std dev scale factor
 NormCSFStdDevScale=`opts_GetOpt1 "--normcsfstddevscale" $@` # normalized CSF std dev scale factor
+
+# keep the pial surface generated from initial pass of mris_make_surfaces 
+# (using the hypernormalized brain.AN.mgz T1w image, unless hypernormalization was omitted)
+# instead of using it as a prior for a 2nd pass of mris_make_surfaces
+# (2nd pass uses the non-hypernormalized brain.finalsurfs.mgz T1w by default)
+SinglePassPial=`opts_GetOpt1 "--singlepasspial" $@` 
+SinglePassPial="$(echo ${SinglePassPial} | tr '[:upper:]' '[:lower:]')" # to lower case
+
 if [ -z "${NormMethod}" ] ; then
     # Default is to use the adult grey matter intensity profile.
     NormMethod="ADULT_GM_IP"
@@ -310,13 +318,25 @@ if [ ! -z $T1wNImage ]; then
     cp -T -n ${SubjectID}/surf/"${hemi}"h.pial ${SubjectID}/surf/"${hemi}"h.pial.noAN
     #mris_make_surfaces ${MAXTHICKNESS} -orig_white white.noAN -white NOWRITE -mgz -T1 brain.AN $SubjectID ${hemi}h
     mris_make_surfaces ${MAXTHICKNESS} -white NOWRITE -mgz -T1 brain.AN $SubjectID ${hemi}h
-    mris_make_surfaces ${MAXTHICKNESS} -orig_pial pial -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
+      # if true, skip 2nd pass of mris_make_surfaces
+      # and keep the pial derived from adult-normalized brain as the final surface
+    if [ $SinglePassPial = false ]; then 
+      mris_make_surfaces ${MAXTHICKNESS} -orig_pial pial -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
+    else
+      echo "Using single pass pial"
+    fi
   done
 else
   for hemi in l r; do
     #mris_make_surfaces ${MAXTHICKNESS} -orig_white white.noAN -white NOWRITE -mgz -T1 brain.AN $SubjectID ${hemi}h
     mris_make_surfaces ${MAXTHICKNESS} -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
-    mris_make_surfaces ${MAXTHICKNESS} -orig_pial pial -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
+      # if true, skip 2nd pass of mris_make_surfaces
+      # and keep the initial pial as the final surface
+    if [ $SinglePassPial = false ]; then
+      mris_make_surfaces ${MAXTHICKNESS} -orig_pial pial -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
+    else
+      echo "Using single pass pial"
+    fi
   done
 fi
 
