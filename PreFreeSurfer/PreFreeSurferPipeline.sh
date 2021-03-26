@@ -134,10 +134,7 @@ T2BrainMask=$(getopt1 "--t2brainmask" $@) # optional user-specified T2 mask
 StudyTemplate=$(getopt1 "--StudyTemplate" $@) # optional user-specified study template
 StudyTemplateBrain=$(getopt1 "--StudyTemplateBrain" $@) # optional user-specified study template brain
 ASegDir=$(getopt1 "--asegdir" $@) # directory of optional user-specified segmentation (aseg_acpc.nii.gz)
-
-# useAntsReg flag added for using ANTs registration instead of FSL
-useAntsReg=$(getopt1 "--useAntsReg" $@)
-useAntsReg="$(echo ${useAntsReg} | tr '[:upper:]' '[:lower:]')" # to lower case
+T1RegMethod=$(getopt1 "--t1regmethod" $@) # method to register T1w to reference (choices: FLIRT_FNIRT, ANTS, ANTS_NO_INTERMEDIATE)
 
 if [ -n "${T1BrainMask}" ] && [[ "${T1BrainMask^^}" == "NONE" ]]; then
   unset T1BrainMask
@@ -481,13 +478,48 @@ fi
 
 # Run ANTS Atlas Registration using T1w acpc brain mask
 
-if ${useAntsReg}; then
+if [ "${T1RegMethod}" = "ANTS_NO_INTERMEDIATE" ] ; then
+  # ------------------------------------------------------------------------------
+  #  Atlas Registration to MNI152: ANTs-based (no intermediate registration)
+  #  Also applies registration to T1w and T2w images
+  #  Modified 20170330 by EF to include the option for a native mask in registration
+  # ------------------------------------------------------------------------------
+  log_Msg "Performing Atlas Registration to MNI152 (ANTs-based)"
+  ${RUN} ${PipelineScripts}/AtlasRegistrationToMNI152_ANTs_UseMasked.sh \
+  --workingdir=${AtlasSpaceFolder} \
+  --t1=${T1wFolder}/${T1wImage}_acpc_dc.nii.gz \
+  --t1rest=${T1wFolder}/${T1wImage}_acpc_dc_restore.nii.gz \
+  --t1restbrain=${T1wFolder}/${T1wImage}_acpc_dc_restore_brain.nii.gz \
+  --t1mask=${T1wFolder}/${T1wImage}_acpc_brain_mask.nii.gz \
+  --t2=${T1wFolder}/${T2wImage}_acpc_dc.nii.gz \
+  --t2rest=${T1wFolder}/${T2wImage}_acpc_dc_restore.nii.gz \
+  --t2restbrain=${T1wFolder}/${T2wImage}_acpc_dc_restore_brain.nii.gz \
+  --ref=${T1wTemplate} \
+  --refbrain=${T1wTemplateBrain} \
+  --refmask=${TemplateMask} \
+  --ref2mm=${T1wTemplate2mm} \
+  --ref2mmbrain=${T1wTemplate2mmBrain} \
+  --ref2mmmask=${Template2mmMask} \
+  --owarp=${AtlasSpaceFolder}/xfms/acpc_dc2standard.nii.gz \
+  --oinvwarp=${AtlasSpaceFolder}/xfms/standard2acpc_dc.nii.gz \
+  --ot1=${AtlasSpaceFolder}/${T1wImage} \
+  --ot1rest=${AtlasSpaceFolder}/${T1wImage}_restore \
+  --ot1restbrain=${AtlasSpaceFolder}/${T1wImage}_restore_brain \
+  --ot2=${AtlasSpaceFolder}/${T2wImage} \
+  --ot2rest=${AtlasSpaceFolder}/${T2wImage}_restore \
+  --ot2restbrain=${AtlasSpaceFolder}/${T2wImage}_restore_brain \
+  --fnirtconfig=${FNIRTConfig} \
+  --useT2=${useT2} \
+  --T1wFolder=${T1wFolder}
+  log_Msg "Completed"
+  
+elif [ "${T1RegMethod}" = "ANTS" ]; then
   # ------------------------------------------------------------------------------
   #  Atlas Registration to MNI152: ANTs with Intermediate Template
   #  Also applies registration to T1w and T2w images
   #  Modified 20170330 by EF to include the option for a native mask in registration
   # ------------------------------------------------------------------------------
-  log_Msg "Performing Atlas Registration to MNI152 (ANTs based with intermediate template)"
+  log_Msg "Performing Atlas Registration to MNI152 (ANTs-based with intermediate template)"
   ${RUN} ${PipelineScripts}/AtlasRegistrationToMNI152_ANTsIntermediateTemplate_UseMasked.sh \
   --workingdir=${AtlasSpaceFolder} \
   --t1=${T1wFolder}/${T1wImage}_acpc_dc.nii.gz \
@@ -517,7 +549,7 @@ if ${useAntsReg}; then
   --useT2=${useT2} \
   --T1wFolder=${T1wFolder}
   log_Msg "Completed"
-else
+elif [ "${T1RegMethod}" = "FLIRT_FNIRT" ]; then
   #### Atlas Registration to MNI152: FLIRT + FNIRT  #Also applies registration to T1w and T2w images ####
   #Consider combining all transforms and recreating files with single resampling steps
   ${RUN} ${PipelineScripts}/AtlasRegistrationToMNI152_FLIRTandFNIRT.sh \
@@ -543,6 +575,9 @@ else
   --ot2restbrain=${AtlasSpaceFolder}/${T2wImage}_restore_brain \
   --fnirtconfig=${FNIRTConfig} \
   --useT2=${useT2}
+else
+  echo "invalid T1w registration method ${T1RegMethod} specified!" 
+  echo "Valid options: {FLIRT_FNIRT,ANTS,ANTS_NO_INTERMEDIATE}"
 fi
 
 MultiTemplateT1wBrain=T1w_brain.nii.gz
