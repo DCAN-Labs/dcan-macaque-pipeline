@@ -5,7 +5,7 @@ export OMP_NUM_THREADS=1
 export PATH=`echo $PATH | sed 's|freesurfer/|freesurfer53/|g'`
 
 # Requirements for this script
-#  installed versions of: FSL5.0.1+
+#  installed versions of: FSL (version 5.0.6)
 #  environment: FSLDIR
 
 ################################################ SUPPORT FUNCTIONS ##################################################
@@ -34,7 +34,7 @@ Usage() {
   echo "                --ot2rest=<output bias corrected t2w to MNI>"
   echo "                --ot2restbrain=<output bias corrected, brain extracted t2w to MNI>"
   echo "                [--fnirtconfig=<FNIRT configuration file>]"
-  echo "                --useT2=<False if T2 is poor or not available. Default True>"
+  echo "                --useT2=<false if T2w image is unavailable, default is true>"
 }
 
 # function for parsing options
@@ -72,7 +72,7 @@ defaultopt() {
 # Just give usage if no arguments specified
 if [ $# -eq 0 ] ; then Usage; exit 0; fi
 # check for correct options
-if [ $# -lt 17 ] ; then Usage; exit 1; fi
+if [ $# -lt 19 ] ; then Usage; exit 1; fi
 
 # parse arguments
 WD=`getopt1 "--workingdir" $@`  # "$1"
@@ -81,7 +81,7 @@ T1wRestore=`getopt1 "--t1rest" $@`  # "$3"
 T1wRestoreBrain=`getopt1 "--t1restbrain" $@`  # "$4"
 T2wImage=`getopt1 "--t2" $@`  # "$5"
 T2wRestore=`getopt1 "--t2rest" $@`  # "$6"
-T2wRestoreBrain=`getopt1 "--t2restbrain" $@`  # "$7"
+T2wRestoreBrain=`getopt1 "--t2restbrain" $@`  # 
 Reference=`getopt1 "--ref" $@`  # "$8"
 ReferenceBrain=`getopt1 "--refbrain" $@`  # "$9"
 ReferenceMask=`getopt1 "--refmask" $@`  # "${10}"
@@ -95,16 +95,15 @@ OutputT1wImageRestoreBrain=`getopt1 "--ot1restbrain" $@`  # "${17}"
 OutputT2wImage=`getopt1 "--ot2" $@`  # "${18}"
 OutputT2wImageRestore=`getopt1 "--ot2rest" $@`  # "${19}"
 OutputT2wImageRestoreBrain=`getopt1 "--ot2restbrain" $@`  # "${20}"
-FNIRTConfig=`getopt1 "--fnirtconfig" $@`  # "${21}"
 useT2=`getopt1 "--useT2" $@` # "${22}"
 
-#ERIC: # default parameters
-#ERIC: WD=`defaultopt $WD .`
-#ERIC: Reference2mm=`defaultopt $Reference2mm ${HCPPIPEDIR_Templates}/MNI152_T1_2mm.nii.gz`
-#ERIC: Reference2mmMask=`defaultopt $Reference2mmMask ${HCPPIPEDIR_Templates}/MNI152_T1_2mm_brain_mask_dil.nii.gz`
-#ERIC: FNIRTConfig=`defaultopt $FNIRTConfig ${HCPPIPEDIR_Config}/T1_2_MNI152_2mm.cnf`
+# default parameters
+# WD=`defaultopt $WD .`
+# Reference2mm=`defaultopt $Reference2mm ${HCPPIPEDIR_Templates}/MNI152_T1_2mm.nii.gz`
+# Reference2mmMask=`defaultopt $Reference2mmMask ${HCPPIPEDIR_Templates}/MNI152_T1_2mm_brain_mask_dil.nii.gz`
 
-
+T1wImageBasename=`remove_ext $T1wImage`;
+T1wImageBasename=`basename $T1wImage`;
 T1wRestoreBasename=`remove_ext $T1wRestore`;
 T1wRestoreBasename=`basename $T1wRestoreBasename`;
 T1wRestoreBrainBasename=`remove_ext $T1wRestoreBrain`;
@@ -123,27 +122,60 @@ echo " " >> $WD/xfms/log.txt
 
 ########################################## DO WORK ########################################## 
 
-# Linear then non-linear registration to MNI
-${FSLDIR}/bin/flirt -interp spline -dof 12 -in ${T1wRestoreBrain} -ref ${ReferenceBrain} -omat ${WD}/xfms/acpc2MNILinear.mat -out ${WD}/xfms/${T1wRestoreBrainBasename}_to_MNILinear
+echo " ANTs T1wRestoreBrain to standard template"
+# Register Input (T1w) to reference brain using ANTs
+echo " "
+echo ${ANTSPATH}${ANTSPATH:+/}antsRegistrationSyN.sh -d 3 -f ${ReferenceBrain} -m ${T1wRestoreBrain} -o ${WD}/xfms/${T1wRestoreBrainBasename}_to_MNI_
+${ANTSPATH}${ANTSPATH:+/}antsRegistrationSyN.sh -d 3 -f ${ReferenceBrain} -m ${T1wRestoreBrain} -o ${WD}/xfms/${T1wRestoreBrainBasename}_to_MNI_
 
-${FSLDIR}/bin/fnirt --in=${T1wRestore} --ref=${Reference2mm} --aff=${WD}/xfms/acpc2MNILinear.mat --refmask=${Reference2mmMask} --fout=${OutputTransform} --jout=${WD}/xfms/NonlinearRegJacobians.nii.gz --refout=${WD}/xfms/IntensityModulatedT1.nii.gz --iout=${WD}/xfms/2mmReg.nii.gz --logout=${WD}/xfms/NonlinearReg.txt --intout=${WD}/xfms/NonlinearIntensities.nii.gz --cout=${WD}/xfms/NonlinearReg.nii.gz --config=${FNIRTConfig}
+echo " antsApplyTransform"
+echo " "
+# combine all the affine and non-linear warps in the order: W1, A1
+${ANTSPATH}${ANTSPATH:+/}antsApplyTransforms -d 3 -i ${T1wRestore} -r ${Reference} -t ${WD}/xfms/${T1wRestoreBrainBasename}_to_MNI_1Warp.nii.gz -t ${WD}/xfms/${T1wRestoreBrainBasename}_to_MNI_0GenericAffine.mat -o [${WD}/xfms/ANTs_CombinedWarp.nii.gz,1] 
 
-# Input and reference spaces are the same, using 2mm reference to save time
-${FSLDIR}/bin/invwarp -w ${OutputTransform} -o ${OutputInvTransform} -r ${Reference2mm}
+# combine inverse warps in the order A1, W1
+${ANTSPATH}${ANTSPATH:+/}antsApplyTransforms -d 3 -i ${T1wImage} -r ${Reference} -t [${WD}/xfms/${T1wRestoreBrainBasename}_to_MNI_0GenericAffine.mat,1] -t ${WD}/xfms/${T1wRestoreBrainBasename}_to_MNI_1InverseWarp.nii.gz -o [${WD}/xfms/ANTs_CombinedInvWarp.nii.gz,1] 
 
+#Conversion of ANTs to FSL format
+echo " ANTs to FSL warp conversion"
+echo " "
+
+# split 3 component vectors
+${C3DPATH}${C3DPATH:+/}c4d -mcs ${WD}/xfms/ANTs_CombinedWarp.nii.gz -oo ${WD}/xfms/e1.nii.gz ${WD}/xfms/e2.nii.gz ${WD}/xfms/e3.nii.gz
+# split 3 component vectors for Inverse Warps
+${C3DPATH}${C3DPATH:+/}c4d -mcs ${WD}/xfms/ANTs_CombinedInvWarp.nii.gz -oo ${WD}/xfms/e1inv.nii.gz ${WD}/xfms/e2inv.nii.gz ${WD}/xfms/e3inv.nii.gz
+
+# reverse y_hat
+${FSLDIR}${FSLDIR:+/}bin/fslmaths ${WD}/xfms/e2.nii.gz -mul -1 ${WD}/xfms/e-2.nii.gz
+# reverse y_hat for Inverse
+${FSLDIR}${FSLDIR:+/}bin/fslmaths ${WD}/xfms/e2inv.nii.gz -mul -1 ${WD}/xfms/e-2inv.nii.gz
+
+# merge to get FSL format warps
+# later on clean up the eX.nii.gz
+${FSLDIR}${FSLDIR:+/}bin/fslmerge -t ${OutputTransform} ${WD}/xfms/e1.nii.gz ${WD}/xfms/e-2.nii.gz ${WD}/xfms/e3.nii.gz
+# merge to get FSL format Inverse warps
+${FSLDIR}${FSLDIR:+/}bin/fslmerge -t ${OutputInvTransform} ${WD}/xfms/e1inv.nii.gz ${WD}/xfms/e-2inv.nii.gz ${WD}/xfms/e3inv.nii.gz
+
+# Combine the inverse warps and get it in FSL format
+# create Jacobian determinant
+${ANTSPATH}${ANTSPATH:+/}CreateJacobianDeterminantImage 3 ${OutputTransform} ${WD}/xfms/NonlinearRegJacobians.nii.gz [doLogJacobian=0] [useGeometric=0]
+
+echo "apply warp "
+echo " "
 # T1w set of warped outputs (brain/whole-head + restored/orig)
-${FSLDIR}/bin/applywarp --rel --interp=spline -i ${T1wImage} -r ${Reference} -w ${OutputTransform} -o ${OutputT1wImage}
-${FSLDIR}/bin/applywarp --rel --interp=spline -i ${T1wRestore} -r ${Reference} -w ${OutputTransform} -o ${OutputT1wImageRestore}
-${FSLDIR}/bin/applywarp --rel --interp=nn -i ${T1wRestoreBrain} -r ${Reference} -w ${OutputTransform} -o ${OutputT1wImageRestoreBrain}
-${FSLDIR}/bin/fslmaths ${OutputT1wImageRestore} -mas ${OutputT1wImageRestoreBrain} ${OutputT1wImageRestoreBrain}
+${FSLDIR}${FSLDIR:+/}bin/applywarp --rel --interp=spline -i ${T1wImage} -r ${Reference} -w ${OutputTransform} -o ${OutputT1wImage}
+${FSLDIR}${FSLDIR:+/}bin/applywarp --rel --interp=spline -i ${T1wRestore} -r ${Reference} -w ${OutputTransform} -o ${OutputT1wImageRestore}
+${FSLDIR}${FSLDIR:+/}bin/applywarp --rel --interp=nn -i ${T1wRestoreBrain} -r ${Reference} -w ${OutputTransform} -o ${OutputT1wImageRestoreBrain}
+${FSLDIR}${FSLDIR:+/}bin/fslmaths ${OutputT1wImageRestore} -mas ${OutputT1wImageRestoreBrain} ${OutputT1wImageRestoreBrain}
 
 if $useT2; then
 # T2w set of warped outputs (brain/whole-head + restored/orig)
-${FSLDIR}/bin/applywarp --rel --interp=spline -i ${T2wImage} -r ${Reference} -w ${OutputTransform} -o ${OutputT2wImage}
-${FSLDIR}/bin/applywarp --rel --interp=spline -i ${T2wRestore} -r ${Reference} -w ${OutputTransform} -o ${OutputT2wImageRestore}
-${FSLDIR}/bin/applywarp --rel --interp=nn -i ${T2wRestoreBrain} -r ${Reference} -w ${OutputTransform} -o ${OutputT2wImageRestoreBrain}
-${FSLDIR}/bin/fslmaths ${OutputT2wImageRestore} -mas ${OutputT2wImageRestoreBrain} ${OutputT2wImageRestoreBrain}
+${FSLDIR}${FSLDIR:+/}bin/applywarp --rel --interp=spline -i ${T2wImage} -r ${Reference} -w ${OutputTransform} -o ${OutputT2wImage}
+${FSLDIR}${FSLDIR:+/}bin/applywarp --rel --interp=spline -i ${T2wRestore} -r ${Reference} -w ${OutputTransform} -o ${OutputT2wImageRestore}
+${FSLDIR}${FSLDIR:+/}bin/applywarp --rel --interp=nn -i ${T2wRestoreBrain} -r ${Reference} -w ${OutputTransform} -o ${OutputT2wImageRestoreBrain}
+${FSLDIR}${FSLDIR:+/}bin/fslmaths ${OutputT2wImageRestore} -mas ${OutputT2wImageRestoreBrain} ${OutputT2wImageRestoreBrain}
 fi
+
 echo " "
 echo " END: AtlasRegistration to MNI152"
 echo " END: `date`" >> $WD/xfms/log.txt
@@ -154,6 +186,7 @@ if [ -e $WD/xfms/qa.txt ] ; then rm -f $WD/xfms/qa.txt ; fi
 echo "cd `pwd`" >> $WD/xfms/qa.txt
 echo "# Check quality of alignment with MNI image" >> $WD/xfms/qa.txt
 echo "fslview ${Reference} ${OutputT1wImageRestore}" >> $WD/xfms/qa.txt
-echo "fslview ${Reference} ${OutputT2wImageRestore}" >> $WD/xfms/qa.txt
+if $useT2; then echo "fslview ${Reference} ${OutputT2wImageRestore}" >> $WD/xfms/qa.txt; fi
 
 ##############################################################################################
+

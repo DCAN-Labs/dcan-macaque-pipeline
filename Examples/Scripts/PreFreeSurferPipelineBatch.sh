@@ -469,7 +469,7 @@ main()
 			--brainsize="$BrainSize" \
 			--fnirtconfig="$FNIRTConfig" \
 			--fmapmag="$MagnitudeInputName" \
-                        --fmapmagbrain="$StudyFolder"/masks/$(basename $(remove_ext "$MagnitudeInputName"))_brain.nii.gz \
+			--fmapmagbrain="$StudyFolder"/masks/$(basename $(remove_ext "$MagnitudeInputName"))_brain.nii.gz \
 			--fmapphase="$PhaseInputName" \
 			--fmapgeneralelectric="$GEB0InputName" \
 			--echodiff="$TE" \
@@ -482,8 +482,8 @@ main()
 			--unwarpdir="$UnwarpDir" \
 			--gdcoeffs="$GradientDistortionCoeffs" \
 			--avgrdcmethod="$AvgrdcSTRING" \
-			--topupconfig="$TopupConfig" \
-                        --useT2="$useT2" \
+            --topupconfig="$TopupConfig" \
+			--useT2="$useT2" \
 			--t1normalized="$T1wNormalized" \
 			--printcom=$PRINTCOM \
 			--revepi=${ReverseEpi:-false}

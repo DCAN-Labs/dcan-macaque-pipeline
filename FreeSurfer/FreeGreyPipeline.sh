@@ -31,6 +31,20 @@ useT2=`opts_GetOpt1 "--useT2" $@` #AP 20162111
 MaxThickness=`opts_GetOpt1 "--maxThickness" $@` # Max threshold for thickness measurements (default = 5mm)
 NormMethod=`opts_GetOpt1 "--normalizationMethod" $@` # Normalization method to be used (or none)
 hypernormalize=`opts_GetOpt1 "--hypernormalize" $@` #deprecated - lose after BIDSApp doesn't use it anymore.
+NormGMStdDevScale=`opts_GetOpt1 "--normgmstddevscale" $@` # normalized GM std dev scale factor
+NormWMStdDevScale=`opts_GetOpt1 "--normwmstddevscale" $@` # normalized WM std dev scale factor
+NormCSFStdDevScale=`opts_GetOpt1 "--normcsfstddevscale" $@` # normalized CSF std dev scale factor
+
+# option to make white surface from adult-normalized T1w (if it exists)
+MakeWhiteFromNormT1=`opts_GetOpt1 "--makewhitefromnormt1" $@`
+MakeWhiteFromNormT1="$(echo ${MakeWhiteFromNormT1} | tr '[:upper:]' '[:lower:]')" # to lower case
+
+# option to keep the pial surface generated from initial pass of mris_make_surfaces 
+# (using the hypernormalized brain.AN.mgz T1w image, unless hypernormalization was omitted)
+# instead of using it as a prior for a 2nd pass of mris_make_surfaces
+# (2nd pass uses the non-hypernormalized brain.finalsurfs.mgz T1w by default)
+SinglePassPial=`opts_GetOpt1 "--singlepasspial" $@` 
+SinglePassPial="$(echo ${SinglePassPial} | tr '[:upper:]' '[:lower:]')" # to lower case
 
 if [ -z "${NormMethod}" ] ; then
     # Default is to use the adult grey matter intensity profile.
@@ -59,7 +73,7 @@ Subnum=$SubjectID
 if [[ "${NormMethod^^}" == "NONE" ]] ; then
     echo Skipping hyper-normalization step per request.
 else
-    ${HCPPIPEDIR_FS}/hypernormalize.sh ${SubjectDIR} ${NormMethod^^}
+    ${HCPPIPEDIR_FS}/hypernormalize.sh ${SubjectDIR} ${NormMethod^^} ${NormGMStdDevScale} ${NormWMStdDevScale} ${NormCSFStdDevScale}
     T1wNImage="T1wN_acpc.nii.gz"
     T1wNImageBrain="T1wN_acpc_brain.nii.gz"
     echo T1wNImage=$T1wNImage
@@ -274,6 +288,7 @@ for TXw in $Modalities; do
   popd
 done
 SubjectID=$Subnum
+
 #grab white matter
 fslmaths ${AsegFile}_1mm.nii.gz -thr 41 -uthr 41 -bin blah41.nii.gz
 fslmaths ${AsegFile}_1mm.nii.gz -thr 2 -uthr 2 -bin blah2.nii.gz
@@ -287,7 +302,23 @@ mri_pretess wm.asegedit.mgz wm norm.mgz wm.mgz
 mri_fill -a ../scripts/ponscc.cut.log -xform transforms/talairach.lta -segmentation aseg.mgz wm.mgz filled.mgz
 popd
 echo "BEGIN: recon-all"
-recon-all -subjid ${SubjectID} -tessellate -smooth1 -inflate1 -qsphere -fix -white -smooth2 -inflate2 -sphere
+
+recon-all -subjid ${SubjectID} -tessellate -smooth1 -inflate1 -qsphere -fix
+
+if [ $MakeWhiteFromNormT1 = true ] && [ ! -z $T1wNImage ]; then
+  # make white surfaces from adult-normalized T1w
+  echo "Making white surfaces from normalized T1w"
+  # copy adult-normalized T1w volume to main subject mri dir 
+  cp -T -n ${SubjectID}N/mri/brain.finalsurfs.mgz ${SubjectID}/mri/brain.AN.mgz
+  for hemi in l r; do
+    mris_make_surfaces -whiteonly -noaparc -mgz -T1 brain.AN ${SubjectID} ${hemi}h
+else
+    # make white surfaces from non-normalized T1w (same as default recon-all -white)
+  for hemi in l r; do
+    mris_make_surfaces -whiteonly -noaparc -mgz -T1 brain.finalsurfs ${SubjectID} ${hemi}h
+fi
+
+recon-all -subjid ${SubjectID} -smooth2 -inflate2 -sphere
 # Using monkey .tif for calculating surface registration.
 echo "Registering surface using average.curvature.filled from MacaqueYerkes19"
 pushd ${SUBJECTS_DIR}/${SubjectID}/surf
@@ -308,13 +339,25 @@ if [ ! -z $T1wNImage ]; then
     cp -T -n ${SubjectID}/surf/"${hemi}"h.pial ${SubjectID}/surf/"${hemi}"h.pial.noAN
     #mris_make_surfaces ${MAXTHICKNESS} -orig_white white.noAN -white NOWRITE -mgz -T1 brain.AN $SubjectID ${hemi}h
     mris_make_surfaces ${MAXTHICKNESS} -white NOWRITE -mgz -T1 brain.AN $SubjectID ${hemi}h
-    mris_make_surfaces ${MAXTHICKNESS} -orig_pial pial -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
+      # if true, skip 2nd pass of mris_make_surfaces
+      # and keep the pial derived from adult-normalized brain as the final surface
+    if [ $SinglePassPial = false ]; then 
+      mris_make_surfaces ${MAXTHICKNESS} -orig_pial pial -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
+    else
+      echo "Using single pass pial"
+    fi
   done
 else
   for hemi in l r; do
     #mris_make_surfaces ${MAXTHICKNESS} -orig_white white.noAN -white NOWRITE -mgz -T1 brain.AN $SubjectID ${hemi}h
     mris_make_surfaces ${MAXTHICKNESS} -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
-    mris_make_surfaces ${MAXTHICKNESS} -orig_pial pial -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
+      # if true, skip 2nd pass of mris_make_surfaces
+      # and keep the initial pial as the final surface
+    if [ $SinglePassPial = false ]; then
+      mris_make_surfaces ${MAXTHICKNESS} -orig_pial pial -white NOWRITE -mgz -T1 brain.finalsurfs $SubjectID ${hemi}h
+    else
+      echo "Using single pass pial"
+    fi
   done
 fi
 
