@@ -312,10 +312,12 @@ if [ $MakeWhiteFromNormT1 = true ] && [ ! -z $T1wNImage ]; then
   cp -T -n ${SubjectID}N/mri/brain.finalsurfs.mgz ${SubjectID}/mri/brain.AN.mgz
   for hemi in l r; do
     mris_make_surfaces -whiteonly -noaparc -mgz -T1 brain.AN ${SubjectID} ${hemi}h
+  done
 else
     # make white surfaces from non-normalized T1w (same as default recon-all -white)
   for hemi in l r; do
     mris_make_surfaces -whiteonly -noaparc -mgz -T1 brain.finalsurfs ${SubjectID} ${hemi}h
+  done
 fi
 
 recon-all -subjid ${SubjectID} -smooth2 -inflate2 -sphere
